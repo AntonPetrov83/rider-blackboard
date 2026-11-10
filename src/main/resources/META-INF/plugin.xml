@@ -1,0 +1,16 @@
+<idea-plugin>
+    <id>com.blackboard</id>
+    <name>Blackboard</name>
+    <vendor>Blackboard</vendor>
+
+    <description><![CDATA[
+        Lightweight project-specific Markdown scratchpad for JetBrains Rider.
+        Open, write, close, continue coding - notes are saved automatically per project.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.rider</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+    </extensions>
+</idea-plugin>
