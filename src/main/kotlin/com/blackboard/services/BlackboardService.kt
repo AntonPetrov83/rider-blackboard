@@ -5,6 +5,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.platform.util.coroutines.childScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Loading starts when the service is first requested; pending changes are flushed when the project closes.
  */
 @Service(Service.Level.PROJECT)
-class BlackboardService(project: Project, cs: CoroutineScope) : Disposable {
+class BlackboardService(project: Project, private val cs: CoroutineScope) : Disposable {
 
     private val core = BlackboardCore(storageFactory = { BlackboardStorage.forProject(project) }, scope = cs)
 
@@ -34,6 +35,9 @@ class BlackboardService(project: Project, cs: CoroutineScope) : Disposable {
     fun retrySave() = core.retrySave()
 
     suspend fun flush() = core.flush()
+
+    /** A scope that lives no longer than the project; the caller must cancel it when its UI is disposed. */
+    fun createChildScope(name: String): CoroutineScope = cs.childScope(name)
 
     /** Called when the project closes: writes unsaved text, waiting at most [FLUSH_TIMEOUT_MS]. */
     override fun dispose() {
