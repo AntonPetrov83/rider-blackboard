@@ -77,7 +77,11 @@ class BlackboardPanel(project: Project) : JBPanel<BlackboardPanel>(BorderLayout(
 
     private fun configureEditor() {
         editor.isViewer = true
+        // No own separator: in the new UI the tool window header draws its bottom line itself when the editor's
+        // scroll pane (which must touch the header, hence no border) is scrolled, like Rider's other tool windows.
         editor.setBorder(JBUI.Borders.empty())
+        // Without the gutter the text would touch the panel edge; keep a small inset like the commit message editor.
+        editor.contentComponent.border = JBUI.Borders.empty(4, 8)
         editor.contentComponent.accessibleContext.accessibleName = BlackboardBundle.message("panel.accessible.name")
         with(editor.settings) {
             isUseSoftWraps = true
