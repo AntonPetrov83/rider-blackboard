@@ -1,6 +1,7 @@
 package com.blackboard.services
 
 import com.blackboard.storage.BlackboardStorage
+import com.blackboard.ui.SaveFailureNotifier
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -8,6 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.platform.util.coroutines.childScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Per-project note state: one instance per open project, so notes of different projects never mix.
@@ -20,6 +22,8 @@ class BlackboardService(project: Project, private val cs: CoroutineScope) : Disp
 
     init {
         core.load()
+        // Project-level, so a persistent failure is reported even while the tool window is hidden.
+        cs.launch { SaveFailureNotifier(project, core::retrySave).watch(core.status) }
     }
 
     val status: StateFlow<SaveStatus> get() = core.status
@@ -30,7 +34,8 @@ class BlackboardService(project: Project, private val cs: CoroutineScope) : Disp
 
     fun currentText(): String = core.currentText()
 
-    fun onTextChanged(text: String) = core.onTextChanged(text)
+    /** [text] must be an immutable snapshot, e.g. `Document.getImmutableCharSequence()`. */
+    fun onTextChanged(text: CharSequence) = core.onTextChanged(text)
 
     fun retrySave() = core.retrySave()
 

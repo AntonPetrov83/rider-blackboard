@@ -14,10 +14,8 @@ import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.util.DocumentUtil
-import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,11 +43,7 @@ class BlackboardPanel(project: Project) : JBPanel<BlackboardPanel>(BorderLayout(
     /** True while the panel itself replaces the document text; such changes are not user edits. */
     private var applyingExternalText = false
 
-    private val statusLabel = JBLabel().apply {
-        font = JBFont.small()
-        border = JBUI.Borders.empty(2, 8)
-        accessibleContext.accessibleName = BlackboardBundle.message("status.accessible.name")
-    }
+    private val statusBar = SaveStatusBar(onRetry = service::retrySave)
 
     val preferredFocusComponent: JComponent
         get() = editor.contentComponent
@@ -59,14 +53,19 @@ class BlackboardPanel(project: Project) : JBPanel<BlackboardPanel>(BorderLayout(
         // until the getter lazily creates the context.
         getAccessibleContext().accessibleName = BlackboardBundle.message("panel.accessible.name")
         configureEditor()
-        add(editor.component, BorderLayout.CENTER)
-        add(statusLabel, BorderLayout.SOUTH)
+        add(EditorOverlayPane(editor, statusBar.savingIndicator), BorderLayout.CENTER)
+        add(statusBar, BorderLayout.SOUTH)
 
         document.addDocumentListener(object : DocumentListener {
             override fun documentChanged(event: DocumentEvent) {
-                if (!applyingExternalText) service.onTextChanged(document.text)
+                // An immutable snapshot is O(1); the String is only built when the note is written.
+                if (!applyingExternalText) service.onTextChanged(document.immutableCharSequence)
             }
         }, this)
+
+        scope.launch(Dispatchers.EDT) {
+            service.status.collect(statusBar::update)
+        }
 
         scope.launch(Dispatchers.EDT) {
             // Load errors and retries are surfaced by the status line; the text is applied once loading succeeds.

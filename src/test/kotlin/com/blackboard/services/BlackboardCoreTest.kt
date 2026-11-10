@@ -220,6 +220,31 @@ class BlackboardCoreTest {
     }
 
     @Test
+    fun `consecutive failures are counted and reset by a successful save`() = runTest {
+        val storage = FakeStorage()
+        val core = loaded(storage)
+        storage.failWrites = true
+        core.onTextChanged("a")
+        settle()
+        assertEquals(1, (core.status.value as SaveStatus.Failed).consecutiveFailures)
+        core.retrySave()
+        settle()
+        core.onTextChanged("ab")
+        settle()
+        assertEquals(3, (core.status.value as SaveStatus.Failed).consecutiveFailures)
+
+        storage.failWrites = false
+        core.retrySave()
+        settle()
+        assertEquals(SaveStatus.Saved, core.status.value)
+
+        storage.failWrites = true
+        core.onTextChanged("abc")
+        settle()
+        assertEquals(1, (core.status.value as SaveStatus.Failed).consecutiveFailures)
+    }
+
+    @Test
     fun `retry after load failure reloads`() = runTest {
         var fail = true
         val storage = object : NoteStorage {
@@ -264,6 +289,19 @@ class BlackboardCoreTest {
 
         assertTrue(core.flushBlocking(5_000))
         assertEquals(listOf("final"), storage.writes)
+    }
+
+    @Test
+    fun `same-length edit is saved and an equal non-String snapshot is ignored`() = runTest {
+        val storage = FakeStorage(content("abc"))
+        val core = loaded(storage)
+        core.onTextChanged(StringBuilder("abc"))
+        settle()
+        assertEquals(emptyList<String>(), storage.writes)
+        core.onTextChanged(StringBuilder("abd"))
+        settle()
+        assertEquals(listOf("abd"), storage.writes)
+        assertEquals("abd", core.currentText())
     }
 
     @Test

@@ -25,7 +25,9 @@ import java.io.IOException
 /**
  * Note state and save coordination, independent of the IDE so it can be tested with a fake storage and a test scope.
  *
- * - The text lives in memory; every change bumps [revision].
+ * - The text lives in memory as an immutable [CharSequence] snapshot; every change bumps [revision].
+ *   It is converted to a String only on the IO dispatcher when written, so an edit costs O(1) on the caller's thread
+ *   (the caller must pass an immutable snapshot, e.g. `Document.getImmutableCharSequence()`).
  * - Nothing is written until [load] finished successfully, so a non-empty file is never replaced
  *   by the empty initial text. Edits made before the load completes are replaced by the loaded content
  *   (the editor is read-only until then).
@@ -45,9 +47,10 @@ class BlackboardCore(
     private val writeMutex = Mutex()
 
     // Guarded by lock.
-    private var text = ""
+    private var text: CharSequence = ""
     private var revision = 0L
     private var savedRevision = 0L
+    private var failureStreak = 0
     private var loaded = false
     private var storage: NoteStorage? = null
     private var loadJob: Job? = null
@@ -61,7 +64,7 @@ class BlackboardCore(
     /** Monotonic counter of text changes (user edits and loads). */
     val currentRevision: Long get() = synchronized(lock) { revision }
 
-    fun currentText(): String = synchronized(lock) { text }
+    fun currentText(): String = synchronized(lock) { text }.toString()
 
     /** Reads the note on [io]. Does nothing if already loaded or loading. */
     fun load() {
@@ -86,7 +89,7 @@ class BlackboardCore(
             when (result) {
                 is ReadResult.Content -> applyLoaded(result.text)
                 ReadResult.Missing -> applyLoaded("")
-                is ReadResult.Failure -> _status.value = SaveStatus.Failed(result.error, duringLoad = true)
+                is ReadResult.Failure -> reportFailure(result.error, duringLoad = true)
             }
         }
     }
@@ -96,13 +99,23 @@ class BlackboardCore(
         revision++
         savedRevision = revision
         loaded = true
+        failureStreak = 0
         _status.value = SaveStatus.Saved
     }
 
-    /** Records an edit and schedules a debounced save. Identical text is ignored. */
-    fun onTextChanged(newText: String) {
+    /** Must be called under [lock]. */
+    private fun reportFailure(error: Exception, duringLoad: Boolean) {
+        failureStreak++
+        _status.value = SaveStatus.Failed(error, duringLoad, failureStreak)
+    }
+
+    /**
+     * Records an edit and schedules a debounced save. [newText] must not change afterwards.
+     * Identical text is ignored; content is compared only when the lengths match, so typing stays O(1).
+     */
+    fun onTextChanged(newText: CharSequence) {
         synchronized(lock) {
-            if (newText == text) return
+            if (newText === text || newText.length == text.length && newText.contentEquals(text)) return
             text = newText
             revision++
             if (!loaded) return
@@ -155,14 +168,15 @@ class BlackboardCore(
             _status.value = SaveStatus.Saving
             Triple(text, revision, storage!!)
         }
-        val result = withContext(io) { s.write(snapshot) }
+        val result = withContext(io) { s.write(snapshot.toString()) }
         synchronized(lock) {
             when (result) {
                 is WriteResult.Success -> {
                     savedRevision = snapshotRevision
+                    failureStreak = 0
                     _status.value = if (revision == savedRevision) SaveStatus.Saved else SaveStatus.Saving
                 }
-                is WriteResult.Failure -> _status.value = SaveStatus.Failed(result.error, duringLoad = false)
+                is WriteResult.Failure -> reportFailure(result.error, duringLoad = false)
             }
         }
     }

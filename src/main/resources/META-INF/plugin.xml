@@ -19,5 +19,6 @@
                     secondary="false"
                     icon="AllIcons.Toolwindows.Documentation"
                     factoryClass="com.blackboard.ui.BlackboardToolWindowFactory"/>
+        <notificationGroup id="Blackboard" displayType="BALLOON" key="notification.group.name"/>
     </extensions>
 </idea-plugin>

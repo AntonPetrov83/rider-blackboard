@@ -14,8 +14,9 @@ sealed interface SaveStatus {
     /**
      * The last load or save failed. The in-memory text is preserved.
      * [duringLoad] means the file could not be read, so saving is disabled until a reload succeeds.
+     * [consecutiveFailures] counts failed attempts in a row (1 for the first one); a success resets it.
      */
-    data class Failed(val error: Exception, val duringLoad: Boolean) : SaveStatus
+    data class Failed(val error: Exception, val duringLoad: Boolean, val consecutiveFailures: Int = 1) : SaveStatus
 
     /** The file changed on disk while there were unsaved edits (detected in a later step). */
     data object Conflict : SaveStatus
