@@ -202,7 +202,7 @@ All changes must be saved automatically.
 Requirements:
 
 - Use a debounced save mechanism.
-- Suggested debounce interval: 500 ms.
+- Save after 1 s without typing; while the user keeps typing, save at least every 5 s.
 - Do not write to disk on every keystroke.
 - Flush pending changes when the project closes or the editor is disposed, where lifecycle permits.
 - Never block the UI thread with disk I/O.
@@ -422,7 +422,7 @@ Targets:
 |---|---|
 | Open Tool Window | Under 200 ms after initialization |
 | Editor input | No perceptible lag |
-| Autosave debounce | Approximately 500 ms |
+| Autosave debounce | 1 s idle, at most 5 s while typing |
 | Typical note size | Up to 1 MB |
 | Project startup | No blocking disk I/O on UI thread |
 

@@ -151,6 +151,61 @@ class BlackboardCoreTest {
     }
 
     @Test
+    fun `continuous typing is saved at least every max wait interval`() = runTest {
+        val storage = FakeStorage()
+        val core = BlackboardCore({ storage }, backgroundScope, StandardTestDispatcher(testScheduler),
+            debounceMs = 1_000, maxWaitMs = 5_000)
+        core.load()
+        runCurrent()
+
+        // A keystroke every 200 ms for 12 s: the 1 s debounce never fires, the 5 s max wait does.
+        val start = testScheduler.currentTime
+        val writesAt = mutableListOf<Long>()
+        for (i in 0 until 60) {
+            core.onTextChanged("t$i")
+            repeat(2) {
+                advanceTimeBy(100)
+                runCurrent()
+                if (storage.writes.size > writesAt.size) writesAt += testScheduler.currentTime - start
+            }
+        }
+        assertEquals(2, storage.writes.size)
+        assertTrue("first save at ${writesAt[0]}", writesAt[0] in 5_000..5_100)
+        assertTrue("second save at ${writesAt[1]}", writesAt[1] in 10_000..10_300)
+
+        // Then the user stops (last keystroke 200 ms ago): the rest is saved 1 s after it.
+        advanceTimeBy(799)
+        runCurrent()
+        assertEquals(2, storage.writes.size)
+        settle()
+        assertEquals("t59", storage.writes.last())
+        assertEquals(3, storage.writes.size)
+        assertEquals(SaveStatus.Saved, core.status.value)
+    }
+
+    @Test
+    fun `a pause resets the max wait interval`() = runTest {
+        val storage = FakeStorage()
+        val core = BlackboardCore({ storage }, backgroundScope, StandardTestDispatcher(testScheduler),
+            debounceMs = 1_000, maxWaitMs = 5_000)
+        core.load()
+        runCurrent()
+
+        core.onTextChanged("a")
+        advanceTimeBy(1_001)
+        runCurrent()
+        assertEquals(listOf("a"), storage.writes)
+
+        // The old max-wait timer was cancelled by that save: 4.5 s more typing must not trigger it.
+        repeat(9) { i ->
+            core.onTextChanged("a$i")
+            advanceTimeBy(500)
+            runCurrent()
+        }
+        assertEquals(listOf("a"), storage.writes)
+    }
+
+    @Test
     fun `no write before debounce interval elapses`() = runTest {
         val storage = FakeStorage()
         val core = loaded(storage)

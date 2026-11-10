@@ -31,7 +31,9 @@ import java.io.IOException
  * - Nothing is written until [load] finished successfully, so a non-empty file is never replaced
  *   by the empty initial text. Edits made before the load completes are replaced by the loaded content
  *   (the editor is read-only until then).
- * - Saves are debounced and strictly sequential (single [writeMutex]); each write takes the latest snapshot
+ * - A save starts after [debounceMs] without edits, or at the latest [maxWaitMs] after the first unsaved edit
+ *   while the user keeps typing, so a long typing session is not left unsaved.
+ * - Saves are strictly sequential (single [writeMutex]); each write takes the latest snapshot
  *   inside the mutex, so an older revision can never overwrite a newer one.
  * - A failed write keeps the text in memory and reports [SaveStatus.Failed]; [retrySave] tries again.
  *
@@ -42,6 +44,7 @@ class BlackboardCore(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val debounceMs: Long = DEFAULT_DEBOUNCE_MS,
+    private val maxWaitMs: Long = DEFAULT_MAX_WAIT_MS,
 ) {
     private val lock = Any()
     private val writeMutex = Mutex()
@@ -55,6 +58,7 @@ class BlackboardCore(
     private var storage: NoteStorage? = null
     private var loadJob: Job? = null
     private var debounceJob: Job? = null
+    private var maxWaitJob: Job? = null
 
     private val _status = MutableStateFlow<SaveStatus>(SaveStatus.Loading)
     val status: StateFlow<SaveStatus> = _status.asStateFlow()
@@ -125,6 +129,13 @@ class BlackboardCore(
                 delay(debounceMs)
                 saveLatest()
             }
+            // Started by the first unsaved edit and not restarted by later ones.
+            if (maxWaitJob?.isActive != true) {
+                maxWaitJob = scope.launch {
+                    delay(maxWaitMs)
+                    saveLatest()
+                }
+            }
         }
     }
 
@@ -133,12 +144,9 @@ class BlackboardCore(
         if (isLoaded) scope.launch { saveLatest() } else load()
     }
 
-    /** Saves unsaved changes immediately, skipping the debounce delay. */
+    /** Saves unsaved changes immediately, skipping the delays. */
     suspend fun flush() {
-        synchronized(lock) {
-            debounceJob?.cancel()
-            debounceJob = null
-        }
+        synchronized(lock) { cancelTimers() }
         saveLatest()
     }
 
@@ -165,6 +173,9 @@ class BlackboardCore(
     private suspend fun writeLatestSnapshot() {
         val (snapshot, snapshotRevision, s) = synchronized(lock) {
             if (!loaded || revision == savedRevision) return
+            // Every pending timer was scheduled (under the lock) by an edit included in this snapshot.
+            // Later edits start new ones. Cancelling the timer that is running this save is harmless.
+            cancelTimers()
             _status.value = SaveStatus.Saving
             Triple(text, revision, storage!!)
         }
@@ -181,9 +192,21 @@ class BlackboardCore(
         }
     }
 
+    /** Must be called under [lock]. */
+    private fun cancelTimers() {
+        debounceJob?.cancel()
+        debounceJob = null
+        maxWaitJob?.cancel()
+        maxWaitJob = null
+    }
+
     companion object {
         private val LOG = logger<BlackboardCore>()
 
-        const val DEFAULT_DEBOUNCE_MS = 500L
+        /** Pause in typing after which the note is saved. */
+        const val DEFAULT_DEBOUNCE_MS = 1_000L
+
+        /** Longest time unsaved edits wait while the user keeps typing. */
+        const val DEFAULT_MAX_WAIT_MS = 5_000L
     }
 }
