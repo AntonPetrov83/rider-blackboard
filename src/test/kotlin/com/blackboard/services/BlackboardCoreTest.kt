@@ -347,12 +347,9 @@ class BlackboardCoreTest {
     }
 
     @Test
-    fun `same-length edit is saved and an equal non-String snapshot is ignored`() = runTest {
+    fun `same-length edit is saved`() = runTest {
         val storage = FakeStorage(content("abc"))
         val core = loaded(storage)
-        core.onTextChanged(StringBuilder("abc"))
-        settle()
-        assertEquals(emptyList<String>(), storage.writes)
         core.onTextChanged(StringBuilder("abd"))
         settle()
         assertEquals(listOf("abd"), storage.writes)
@@ -360,12 +357,124 @@ class BlackboardCoreTest {
     }
 
     @Test
-    fun `identical text does not schedule a save`() = runTest {
-        val storage = FakeStorage(content("same"))
+    fun `the same snapshot reported twice does not schedule a save`() = runTest {
+        val storage = FakeStorage()
         val core = loaded(storage)
-        core.onTextChanged("same")
+        val snapshot = "typed"
+        core.onTextChanged(snapshot)
         settle()
-        assertEquals(emptyList<String>(), storage.writes)
+        core.onTextChanged(snapshot)
+        settle()
+        assertEquals(listOf("typed"), storage.writes)
         assertEquals(SaveStatus.Saved, core.status.value)
+    }
+
+    @Test
+    fun `flushAsync saves without waiting for the debounce`() = runTest {
+        val storage = FakeStorage()
+        val core = loaded(storage)
+        core.onTextChanged("closing")
+        core.flushAsync()
+        runCurrent()
+        assertEquals(listOf("closing"), storage.writes)
+        settle()
+        assertEquals(listOf("closing"), storage.writes)
+    }
+
+    @Test
+    fun `flushBlocking returns at once when nothing is unsaved`() {
+        val storage = FakeStorage(content("saved"))
+        withRealScope { scope ->
+            val core = BlackboardCore({ storage }, scope, Dispatchers.IO)
+            core.load()
+            awaitCondition { core.isLoaded }
+            scope.cancel()
+            assertTrue(core.flushBlocking(0))
+            assertEquals(emptyList<String>(), storage.writes)
+        }
+    }
+
+    @Test
+    fun `flushBlocking before load finished writes nothing`() {
+        val storage = FakeStorage(content("existing"))
+        withRealScope { scope ->
+            val core = BlackboardCore({ storage }, scope, Dispatchers.IO)
+            assertTrue(core.flushBlocking(1_000))
+            assertEquals(emptyList<String>(), storage.writes)
+        }
+    }
+
+    @Test
+    fun `closing during a write waits for it and then writes the latest text`() {
+        val storage = FakeStorage()
+        withRealScope { scope ->
+            val core = BlackboardCore({ storage }, scope, Dispatchers.IO, debounceMs = 20)
+            core.load()
+            awaitCondition { core.isLoaded }
+
+            val gate = CompletableDeferred<Unit>()
+            storage.gate = gate
+            core.onTextChanged("v1")
+            awaitCondition { storage.gate == null } // write of v1 started and is blocked
+            core.onTextChanged("v2")
+            scope.cancel() // project disposal cancels the service scope
+
+            val release = Thread { Thread.sleep(100); gate.complete(Unit) }.apply { start() }
+            assertTrue(core.flushBlocking(5_000))
+            release.join()
+            assertEquals(listOf("v1", "v2"), storage.writes)
+        }
+    }
+
+    @Test
+    fun `flushBlocking gives up after the timeout but the write still completes`() {
+        val storage = FakeStorage()
+        withRealScope { scope ->
+            val core = BlackboardCore({ storage }, scope, Dispatchers.IO, debounceMs = 60_000)
+            core.load()
+            awaitCondition { core.isLoaded }
+
+            val gate = CompletableDeferred<Unit>()
+            storage.gate = gate
+            core.onTextChanged("stuck")
+            assertFalse(core.flushBlocking(100))
+            assertEquals("stuck", core.currentText()) // not discarded
+
+            gate.complete(Unit)
+            awaitCondition { core.status.value == SaveStatus.Saved }
+            assertEquals(listOf("stuck"), storage.writes)
+        }
+    }
+
+    @Test
+    fun `retry during a save does not write twice or write older text`() {
+        val storage = FakeStorage()
+        withRealScope { scope ->
+            val core = BlackboardCore({ storage }, scope, Dispatchers.IO, debounceMs = 20)
+            core.load()
+            awaitCondition { core.isLoaded }
+
+            val gate = CompletableDeferred<Unit>()
+            storage.gate = gate
+            core.onTextChanged("v1")
+            awaitCondition { storage.gate == null }
+            core.retrySave()
+            core.retrySave()
+            core.onTextChanged("v2")
+            core.retrySave()
+            gate.complete(Unit)
+            awaitCondition { core.status.value == SaveStatus.Saved }
+            Thread.sleep(100) // let any stray debounce or retry run
+            assertEquals(listOf("v1", "v2"), storage.writes)
+        }
+    }
+
+    private fun withRealScope(block: (CoroutineScope) -> Unit) {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            block(scope)
+        } finally {
+            scope.cancel()
+        }
     }
 }

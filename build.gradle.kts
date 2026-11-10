@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -54,7 +55,17 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            recommended()
+            // Verify against the same Rider build the plugin is compiled against, never download extra IDEs
+            // (recommended() would fetch several multi-GB builds).
+            val localPath = providers.gradleProperty("platformLocalPath").orNull
+            if (localPath.isNullOrBlank()) {
+                // The SDK artifact already resolved for compilation (Gradle cache), not the installer.
+                create(IntelliJPlatformType.Rider, providers.gradleProperty("platformVersion")) {
+                    useInstaller = false
+                }
+            } else {
+                local(localPath)
+            }
         }
     }
 }

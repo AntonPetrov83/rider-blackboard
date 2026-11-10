@@ -47,10 +47,17 @@ class BlackboardService(project: Project, private val cs: CoroutineScope) : Disp
 
     suspend fun flush() = core.flush()
 
+    /** Starts writing unsaved text in the background; called when the project starts closing. */
+    fun flushAsync() = core.flushAsync()
+
     /** A scope that lives no longer than the project; the caller must cancel it when its UI is disposed. */
     fun createChildScope(name: String): CoroutineScope = cs.childScope(name)
 
-    /** Called when the project closes: writes unsaved text, waiting at most [FLUSH_TIMEOUT_MS]. */
+    /**
+     * Called when the project closes (also on IDE exit), after the tool window and its editor are gone:
+     * the text lives in [core], so nothing depends on the panel. Usually a no-op because
+     * [BlackboardProjectCloseListener] already started the write; otherwise waits at most [FLUSH_TIMEOUT_MS].
+     */
     override fun dispose() {
         core.flushBlocking(FLUSH_TIMEOUT_MS)
     }

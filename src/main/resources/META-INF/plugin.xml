@@ -22,6 +22,11 @@
         <notificationGroup id="Blackboard" displayType="BALLOON" key="notification.group.name"/>
     </extensions>
 
+    <applicationListeners>
+        <listener class="com.blackboard.services.BlackboardProjectCloseListener"
+                  topic="com.intellij.openapi.project.ProjectCloseListener"/>
+    </applicationListeners>
+
     <actions>
         <!-- Text and description come from action.Blackboard.Toggle.* in BlackboardBundle. -->
         <action id="Blackboard.Toggle"

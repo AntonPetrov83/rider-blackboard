@@ -10,17 +10,20 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * Note state and save coordination, independent of the IDE so it can be tested with a fake storage and a test scope.
@@ -36,6 +39,10 @@ import java.io.IOException
  * - Saves are strictly sequential (single [writeMutex]); each write takes the latest snapshot
  *   inside the mutex, so an older revision can never overwrite a newer one.
  * - A failed write keeps the text in memory and reports [SaveStatus.Failed]; [retrySave] tries again.
+ *
+ * - Lifecycle: the owner calls [flushAsync] as soon as it knows it is going away (e.g. project closing) and
+ *   [flushBlocking] as the last step of its disposal. Neither depends on any UI being alive: the text is
+ *   kept here, not in the editor.
  *
  * All public methods are thread-safe and non-blocking, except [flushBlocking].
  */
@@ -115,11 +122,12 @@ class BlackboardCore(
 
     /**
      * Records an edit and schedules a debounced save. [newText] must not change afterwards.
-     * Identical text is ignored; content is compared only when the lengths match, so typing stays O(1).
+     * Only the identity of the snapshot is compared: the caller reports real changes only (the panel skips
+     * no-op document events), and a content comparison would cost O(n) per keystroke on a large note.
      */
     fun onTextChanged(newText: CharSequence) {
         synchronized(lock) {
-            if (newText === text || newText.length == text.length && newText.contentEquals(text)) return
+            if (newText === text) return
             text = newText
             revision++
             if (!loaded) return
@@ -150,14 +158,36 @@ class BlackboardCore(
         saveLatest()
     }
 
+    /** Starts [flush] in the background without waiting, so a later [flushBlocking] usually has nothing left to do. */
+    fun flushAsync() {
+        scope.launch { flush() }
+    }
+
     /**
-     * Blocking [flush] for disposal. Does not use [scope], which may already be cancelled.
-     * Returns false if unsaved changes could not be written within [timeoutMs].
+     * Blocking [flush] for disposal; may be called on any thread, including the EDT.
+     *
+     * Returns at once when everything is saved and no write is running (the usual case after [flushAsync] or an
+     * autosave). Otherwise waits up to [timeoutMs] for the write, which runs on [io] in its own scope, because
+     * [scope] may already be cancelled. A timed-out write is not interrupted and still completes in the background.
+     * Returns false if unsaved changes could not be written.
      */
     fun flushBlocking(timeoutMs: Long): Boolean {
-        val finished = runBlocking { withTimeoutOrNull(timeoutMs) { flush(); true } } ?: false
+        if (!writeMutex.isLocked && hasNoUnsavedChanges()) return true
+        val write = CoroutineScope(SupervisorJob() + io).future { flush() }
+        val finished = try {
+            write.get(timeoutMs, TimeUnit.MILLISECONDS)
+            true
+        } catch (_: TimeoutException) {
+            false
+        } catch (e: ExecutionException) {
+            LOG.warn("Blackboard: flush failed", e.cause)
+            false
+        }
         val clean = finished && hasNoUnsavedChanges()
-        if (!clean) LOG.warn("Blackboard: unsaved changes could not be written on close (timeout=$timeoutMs ms)")
+        if (!clean) {
+            val reason = if (finished) "the last write failed" else "timed out after $timeoutMs ms"
+            LOG.warn("Blackboard: unsaved changes could not be written on close ($reason)")
+        }
         return clean
     }
 

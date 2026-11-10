@@ -61,8 +61,11 @@ class BlackboardPanel(private val project: Project) : JBPanel<BlackboardPanel>(B
 
         document.addDocumentListener(object : DocumentListener {
             override fun documentChanged(event: DocumentEvent) {
+                if (applyingExternalText) return
+                // E.g. pasting the selected text over itself: not a change, and the service does not compare content.
+                if (event.oldLength == event.newLength && StringUtil.equals(event.oldFragment, event.newFragment)) return
                 // An immutable snapshot is O(1); the String is only built when the note is written.
-                if (!applyingExternalText) service.onTextChanged(document.immutableCharSequence)
+                service.onTextChanged(document.immutableCharSequence)
             }
         }, this)
 
