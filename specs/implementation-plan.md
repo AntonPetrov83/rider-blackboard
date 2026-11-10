@@ -96,7 +96,7 @@
 Прочитай specs/writing-block.md (FR-001, FR-006).
 
 - actions/ToggleBlackboardAction.kt (DumbAwareAction): если окно скрыто — activate и фокус в редактор; если открыто и в фокусе — hide и вернуть фокус в предыдущий редактор; если открыто без фокуса — перевести фокус в редактор.
-- Регистрация в plugin.xml: id "Blackboard.Toggle", текст из бандла, добавить в группу ViewMenu / Tool Windows; keyboard-shortcut Alt+B для keymap $default. Перед этим проверь в SDK, не занят ли Alt+B в Rider-кеймапах (Visual Studio, ReSharper, Rider по умолчанию); если занят — не перебивать молча: оставь шорткат только там, где он свободен, и опиши решение в README.
+- Регистрация в plugin.xml: id "Blackboard.Toggle", текст из бандла, без отдельного пункта меню (окно уже есть в View → Tool Windows); keyboard-shortcut Alt+B для keymap $default. Перед этим проверь в SDK, не занят ли Alt+B в Rider-кеймапах (Visual Studio, ReSharper, Rider по умолчанию); если занят — не перебивать молча: оставь шорткат только там, где он свободен, и опиши решение в README.
 - Позиция каретки и скролл запоминаются в сервисе (в памяти) и восстанавливаются при открытии через action.
 - При открытии кликом по stripe фокус ведёт себя стандартно (не насильно в редактор).
 - Возврат фокуса при скрытии: запомнить последний FileEditor/компонент перед активацией, вернуть через IdeFocusManager, если он ещё валиден.

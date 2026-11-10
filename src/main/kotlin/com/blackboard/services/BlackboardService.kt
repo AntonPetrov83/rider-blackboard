@@ -39,6 +39,12 @@ class BlackboardService(project: Project, private val cs: CoroutineScope) : Disp
 
     fun retrySave() = core.retrySave()
 
+    /**
+     * Caret and scroll of the note editor, kept in memory only (not persisted) so a re-created panel
+     * continues where the user left off. Accessed on the EDT.
+     */
+    var editorViewState: EditorViewState? = null
+
     suspend fun flush() = core.flush()
 
     /** A scope that lives no longer than the project; the caller must cancel it when its UI is disposed. */

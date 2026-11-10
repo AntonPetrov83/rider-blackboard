@@ -2,6 +2,7 @@ package com.blackboard.ui
 
 import com.blackboard.BlackboardBundle
 import com.blackboard.services.BlackboardService
+import com.blackboard.services.EditorViewState
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.EditorFactory
@@ -14,9 +15,11 @@ import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.ui.components.JBPanel
 import com.intellij.util.DocumentUtil
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.update.UiNotifyConnector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -31,7 +34,7 @@ import javax.swing.JComponent
  * The editor is read-only until the service has loaded the note; the text is then taken from the service's
  * memory (not from the file), so reopening the tool window always shows the latest edits.
  */
-class BlackboardPanel(project: Project) : JBPanel<BlackboardPanel>(BorderLayout()), Disposable {
+class BlackboardPanel(private val project: Project) : JBPanel<BlackboardPanel>(BorderLayout()), Disposable {
 
     private val service = BlackboardService.getInstance(project)
     private val scope: CoroutineScope = service.createChildScope("BlackboardPanel")
@@ -101,6 +104,35 @@ class BlackboardPanel(project: Project) : JBPanel<BlackboardPanel>(BorderLayout(
         // Set only after loading, so the placeholder never shows over a not-yet-read non-empty note.
         editor.setPlaceholder(BlackboardBundle.message("editor.placeholder"))
         editor.setShowPlaceholderWhenFocused(true)
+        restoreViewState()
+    }
+
+    /** Moves keyboard focus into the note so the user can type right away (used by the toggle action). */
+    fun focusEditor() {
+        IdeFocusManager.getInstance(project).requestFocusInProject(editor.contentComponent, project)
+    }
+
+    /** Stores caret and scroll in the service, so a re-created panel opens at the same place. */
+    fun rememberViewState() {
+        if (!service.isLoaded) return // Nothing meaningful yet; keep the previously stored state.
+        service.editorViewState = EditorViewState(
+            caretOffset = editor.caretModel.offset,
+            verticalScrollOffset = editor.scrollingModel.verticalScrollOffset,
+        )
+    }
+
+    private fun restoreViewState() {
+        val state = service.editorViewState ?: return
+        editor.caretModel.moveToOffset(state.caretOffset.coerceIn(0, document.textLength))
+        // Scrolling needs a laid-out editor; if the panel is not shown yet, wait until it is.
+        UiNotifyConnector.doWhenFirstShown(editor.component) {
+            editor.scrollingModel.disableAnimation()
+            try {
+                editor.scrollingModel.scrollVertically(state.verticalScrollOffset)
+            } finally {
+                editor.scrollingModel.enableAnimation()
+            }
+        }
     }
 
     /** Replaces the document text without an undo entry and without reporting it as a user edit. */
@@ -116,6 +148,7 @@ class BlackboardPanel(project: Project) : JBPanel<BlackboardPanel>(BorderLayout(
     }
 
     override fun dispose() {
+        rememberViewState()
         scope.cancel()
         EditorFactory.getInstance().releaseEditor(editor)
     }

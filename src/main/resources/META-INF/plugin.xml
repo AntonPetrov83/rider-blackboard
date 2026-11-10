@@ -17,8 +17,21 @@
         <toolWindow id="Blackboard"
                     anchor="right"
                     secondary="false"
-                    icon="AllIcons.Toolwindows.Documentation"
+                    icon="AllIcons.Actions.ListFiles"
                     factoryClass="com.blackboard.ui.BlackboardToolWindowFactory"/>
         <notificationGroup id="Blackboard" displayType="BALLOON" key="notification.group.name"/>
     </extensions>
+
+    <actions>
+        <!-- Text and description come from action.Blackboard.Toggle.* in BlackboardBundle. -->
+        <action id="Blackboard.Toggle"
+                class="com.blackboard.actions.ToggleBlackboardAction"
+                icon="AllIcons.Actions.ListFiles">
+            <!-- Alt+B is free in $default and the Rider keymaps derived from it (Visual Studio, Visual Studio 2022,
+                 ReSharper, Visual Assist, VSCode, Sublime Text). Emacs uses it for backward-word, so it is removed
+                 there instead of silently overriding it. See README "Keyboard shortcut". -->
+            <keyboard-shortcut keymap="$default" first-keystroke="alt B"/>
+            <keyboard-shortcut keymap="Emacs" first-keystroke="alt B" remove="true"/>
+        </action>
+    </actions>
 </idea-plugin>
