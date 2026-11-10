@@ -1,0 +1,48 @@
+package com.blackboard.services
+
+import com.blackboard.storage.BlackboardStorage
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * Per-project note state: one instance per open project, so notes of different projects never mix.
+ * Loading starts when the service is first requested; pending changes are flushed when the project closes.
+ */
+@Service(Service.Level.PROJECT)
+class BlackboardService(project: Project, cs: CoroutineScope) : Disposable {
+
+    private val core = BlackboardCore(storageFactory = { BlackboardStorage.forProject(project) }, scope = cs)
+
+    init {
+        core.load()
+    }
+
+    val status: StateFlow<SaveStatus> get() = core.status
+
+    val isLoaded: Boolean get() = core.isLoaded
+
+    val currentRevision: Long get() = core.currentRevision
+
+    fun currentText(): String = core.currentText()
+
+    fun onTextChanged(text: String) = core.onTextChanged(text)
+
+    fun retrySave() = core.retrySave()
+
+    suspend fun flush() = core.flush()
+
+    /** Called when the project closes: writes unsaved text, waiting at most [FLUSH_TIMEOUT_MS]. */
+    override fun dispose() {
+        core.flushBlocking(FLUSH_TIMEOUT_MS)
+    }
+
+    companion object {
+        private const val FLUSH_TIMEOUT_MS = 3_000L
+
+        fun getInstance(project: Project): BlackboardService = project.service()
+    }
+}

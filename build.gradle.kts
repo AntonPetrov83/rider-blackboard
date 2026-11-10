@@ -33,6 +33,11 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.opentest4j:opentest4j:1.3.0")
+    // Matches the platform's bundled coroutines (1.10.2-intellij); core itself comes from the IDE.
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2") {
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+    }
 }
 
 intellijPlatform {

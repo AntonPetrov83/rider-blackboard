@@ -36,13 +36,20 @@ sealed interface WriteResult {
     data class Failure(val error: IOException) : WriteResult
 }
 
+/** Blocking note persistence. Implementations never throw on I/O errors and must not be called on the EDT. */
+interface NoteStorage {
+    fun read(): ReadResult
+
+    fun write(text: String): WriteResult
+}
+
 /**
  * Reads and writes the Blackboard note file. Plain java.nio, no UI or IDE threading dependencies.
  *
  * All methods perform blocking disk I/O and must not be called on the EDT.
  * Methods are synchronized, so concurrent calls never write the same file simultaneously.
  */
-class BlackboardStorage(val file: Path) {
+class BlackboardStorage(val file: Path) : NoteStorage {
 
     /** Version of the content most recently read from or written to disk by this instance. */
     @Volatile
@@ -50,7 +57,7 @@ class BlackboardStorage(val file: Path) {
         private set
 
     @Synchronized
-    fun read(): ReadResult {
+    override fun read(): ReadResult {
         val bytes = try {
             Files.readAllBytes(file)
         } catch (_: NoSuchFileException) {
@@ -76,7 +83,7 @@ class BlackboardStorage(val file: Path) {
      * Creates the parent directory if needed. Never throws on I/O errors.
      */
     @Synchronized
-    fun write(text: String): WriteResult {
+    override fun write(text: String): WriteResult {
         val bytes = text.toByteArray(StandardCharsets.UTF_8)
         var temp: Path? = null
         try {
