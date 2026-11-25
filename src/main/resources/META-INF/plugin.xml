@@ -4,8 +4,34 @@
     <vendor url="https://github.com/AntonPetrov83/rider-blackboard">Anton Petrov</vendor>
 
     <description><![CDATA[
-        Lightweight project-specific Markdown scratchpad for JetBrains Rider.
-        Open, write, close, continue coding - notes are saved automatically per project.
+<p>A quick, project-specific Markdown scratchpad that lives right inside Rider.
+Press <b>Alt+B</b>, jot down a thought, press <b>Alt+B</b> again and you are back in your code.</p>
+
+<p>Keep TODOs, debugging notes, snippets, links and half-formed ideas next to the solution they belong to,
+without leaving the IDE or switching to a separate notes app.</p>
+
+<h3>Features</h3>
+<ul>
+  <li><b>One note per project</b> &mdash; each solution has its own Blackboard, stored as a plain
+      <code>blackboard.md</code> file in the project's <code>.idea</code> folder.</li>
+  <li><b>Instant toggle</b> &mdash; <b>Alt+B</b> opens the note with the caret ready for typing, and hides it
+      again, returning focus to the editor you came from.</li>
+  <li><b>Automatic saving</b> &mdash; no Save button: changes are written after a second of idle time,
+      at least every few seconds while you type, and when the project closes.</li>
+  <li><b>Safe writes</b> &mdash; atomic file writes, a save status line, a Retry button and a notification
+      if saving fails, and a warning when the file is changed outside the IDE. Your text is never silently lost.</li>
+  <li><b>Markdown editor</b> &mdash; syntax highlighting via the bundled Markdown plugin
+      (falls back to plain text if it is disabled).</li>
+  <li><b>Native look</b> &mdash; uses your IDE theme and editor font, no custom colors.</li>
+</ul>
+
+<h3>Getting started</h3>
+<p>Press <b>Alt+B</b>, click the <i>Blackboard</i> button on the right tool window bar,
+or use <b>View | Tool Windows | Blackboard</b>.
+The shortcut can be changed in <b>Settings | Keymap</b> (search for <i>Toggle Blackboard</i>).</p>
+
+<p>Open source (MIT): <a href="https://github.com/AntonPetrov83/rider-blackboard">GitHub</a> &middot;
+<a href="https://github.com/AntonPetrov83/rider-blackboard/issues">Report an issue</a></p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

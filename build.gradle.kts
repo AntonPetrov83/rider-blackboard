@@ -1,9 +1,11 @@
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.4.21"
     id("org.jetbrains.intellij.platform") version "2.20.1"
+    id("org.jetbrains.changelog") version "2.2.1"
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -47,6 +49,20 @@ intellijPlatform {
         name = providers.gradleProperty("pluginName")
         version = providers.gradleProperty("pluginVersion")
 
+        // "What's New" on the Marketplace page: the CHANGELOG.md section of this version (or Unreleased).
+        // A block-local reference, so the lambda captures neither `project` nor the script (configuration cache).
+        val changelogExtension = project.changelog
+        changeNotes = providers.gradleProperty("pluginVersion").map { pluginVersion ->
+            with(changelogExtension) {
+                renderItem(
+                    (getOrNull(pluginVersion) ?: getUnreleased())
+                        .withHeader(false)
+                        .withEmptySections(false),
+                    Changelog.OutputType.HTML,
+                )
+            }
+        }
+
         ideaVersion {
             sinceBuild = providers.gradleProperty("pluginSinceBuild")
             untilBuild = provider { null }
@@ -68,4 +84,9 @@ intellijPlatform {
             }
         }
     }
+}
+
+changelog {
+    groups.empty()
+    repositoryUrl = "https://github.com/AntonPetrov83/rider-blackboard"
 }
