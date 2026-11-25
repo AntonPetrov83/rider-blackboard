@@ -4,8 +4,11 @@ import com.blackboard.BlackboardBundle
 import com.blackboard.services.BlackboardService
 import com.blackboard.services.EditorViewState
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.colors.EditorColorsListener
+import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.ex.EditorEx
@@ -88,6 +91,10 @@ class BlackboardPanel(private val project: Project) : JBPanel<BlackboardPanel>(B
         // Without the gutter the text would touch the panel edge; keep a small inset like the commit message editor.
         editor.contentComponent.border = JBUI.Borders.empty(4, 8)
         editor.contentComponent.accessibleContext.accessibleName = BlackboardBundle.message("panel.accessible.name")
+        useDefaultFont()
+        // The scheme wraps the global scheme of the moment, so rebuild it when the user changes scheme or fonts.
+        ApplicationManager.getApplication().messageBus.connect(this)
+            .subscribe(EditorColorsManager.TOPIC, EditorColorsListener { useDefaultFont() })
         with(editor.settings) {
             isUseSoftWraps = true
             isLineNumbersShown = false
@@ -99,6 +106,12 @@ class BlackboardPanel(private val project: Project) : JBPanel<BlackboardPanel>(B
             isRightMarginShown = false
             isIndentGuidesShown = false
         }
+    }
+
+    /** Notes use the IDE default font (Settings | Editor | Font), like the terminal, not the color scheme font. */
+    private fun useDefaultFont() {
+        val global = EditorColorsManager.getInstance().globalScheme
+        editor.colorsScheme = editor.createBoundColorSchemeDelegate(DefaultFontColorScheme(global))
     }
 
     private fun onServiceLoaded() {
