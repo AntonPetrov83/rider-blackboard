@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>com.blackboard</id>
+    <id>io.github.antonpetrov83.blackboard</id>
     <name>Blackboard</name>
-    <vendor>Blackboard</vendor>
+    <vendor url="https://github.com/AntonPetrov83/rider-blackboard">Anton Petrov</vendor>
 
     <description><![CDATA[
         Lightweight project-specific Markdown scratchpad for JetBrains Rider.
