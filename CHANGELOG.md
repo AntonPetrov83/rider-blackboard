@@ -16,3 +16,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Atomic writes, save status line with Retry, failure notifications and detection of external file changes.
 - Markdown syntax highlighting (plain text fallback when the Markdown plugin is disabled).
 - Notes use the IDE default editor font and the current color scheme.
+- Outline tool window and action icon in the New UI style, with light and dark variants.
