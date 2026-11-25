@@ -71,7 +71,8 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            // Verify against the same Rider build the plugin is compiled against, never download extra IDEs
+            // Verify locally against the same Rider build the plugin is compiled against, never download extra IDEs
+            // (the plugin only uses the IntelliJ Platform; JetBrains Marketplace verifies every other IDE on upload)
             // (recommended() would fetch several multi-GB builds).
             val localPath = providers.gradleProperty("platformLocalPath").orNull
             if (localPath.isNullOrBlank()) {

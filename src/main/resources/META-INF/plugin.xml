@@ -4,38 +4,38 @@
     <vendor url="https://github.com/AntonPetrov83/rider-blackboard">Anton Petrov</vendor>
 
     <description><![CDATA[
-<p>A quick, project-specific Markdown scratchpad that lives right inside Rider.
-Press <b>Alt+B</b>, jot down a thought, press <b>Alt+B</b> again and you are back in your code.</p>
-
-<p>Keep TODOs, debugging notes, snippets, links and half-formed ideas next to the solution they belong to,
-without leaving the IDE or switching to a separate notes app.</p>
+<p>A quick, project-specific Markdown scratchpad that lives right inside your JetBrains IDE.
+Keep TODOs, debugging notes, snippets, links and half-formed ideas next to the code they belong to,
+without switching to a separate notes app.</p>
 
 <h3>Features</h3>
 <ul>
-  <li><b>One note per project</b> &mdash; each solution has its own Blackboard, stored as a plain
+  <li><b>One note per project</b> &mdash; each project has its own Blackboard, stored as a plain
       <code>blackboard.md</code> file in the project's <code>.idea</code> folder.</li>
-  <li><b>Instant toggle</b> &mdash; <b>Alt+B</b> opens the note with the caret ready for typing, and hides it
-      again, returning focus to the editor you came from.</li>
+  <li><b>Always at hand</b> &mdash; a tool window on the right: open it, write, close it and keep coding.
+      Your text and caret position are exactly where you left them.</li>
   <li><b>Automatic saving</b> &mdash; no Save button: changes are written after a second of idle time,
       at least every few seconds while you type, and when the project closes.</li>
-  <li><b>Safe writes</b> &mdash; atomic file writes, a save status line, a Retry button and a notification
-      if saving fails, and a warning when the file is changed outside the IDE. Your text is never silently lost.</li>
+  <li><b>Your notes are safe</b> &mdash; atomic file writes, a save status line with Retry, a notification
+      if saving fails, and a warning when the file is changed outside the IDE.</li>
   <li><b>Markdown editor</b> &mdash; syntax highlighting via the bundled Markdown plugin
       (falls back to plain text if it is disabled).</li>
-  <li><b>Native look</b> &mdash; uses your IDE theme and editor font, no custom colors.</li>
+  <li><b>Native look</b> &mdash; follows your IDE theme and editor font, no custom colors.</li>
 </ul>
 
+<p>Works in IntelliJ IDEA, PyCharm, WebStorm, Rider, CLion, GoLand, PhpStorm, RubyMine
+and other IntelliJ-based IDEs, version 2026.2 and newer.</p>
+
 <h3>Getting started</h3>
-<p>Press <b>Alt+B</b>, click the <i>Blackboard</i> button on the right tool window bar,
-or use <b>View | Tool Windows | Blackboard</b>.
-The shortcut can be changed in <b>Settings | Keymap</b> (search for <i>Toggle Blackboard</i>).</p>
+<p>Click the <i>Blackboard</i> button on the right tool window bar or use
+<b>View | Tool Windows | Blackboard</b>. The <i>Toggle Blackboard</i> action (<b>Alt+B</b> by default)
+opens the note ready for typing and hides it again, returning you to your code.</p>
 
 <p>Open source (MIT): <a href="https://github.com/AntonPetrov83/rider-blackboard">GitHub</a> &middot;
 <a href="https://github.com/AntonPetrov83/rider-blackboard/issues">Report an issue</a></p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <depends>com.intellij.modules.rider</depends>
 
     <resource-bundle>messages.BlackboardBundle</resource-bundle>
 
@@ -58,9 +58,10 @@ The shortcut can be changed in <b>Settings | Keymap</b> (search for <i>Toggle Bl
         <action id="Blackboard.Toggle"
                 class="com.blackboard.actions.ToggleBlackboardAction"
                 icon="/icons/blackboard.svg">
-            <!-- Alt+B is free in $default and the Rider keymaps derived from it (Visual Studio, Visual Studio 2022,
-                 ReSharper, Visual Assist, VSCode, Sublime Text). Emacs uses it for backward-word, so it is removed
-                 there instead of silently overriding it. See README "Keyboard shortcut". -->
+            <!-- Alt+B is free in $default and in every bundled or JetBrains-published keymap derived from it
+                 (Windows, Linux and macOS variants of Visual Studio, ReSharper, VSCode, Sublime Text, Eclipse, NetBeans,
+                 Xcode, QtCreator, ...). Emacs uses it for backward-word, so it is removed there instead of silently
+                 overriding it. See README "Keyboard shortcut". -->
             <keyboard-shortcut keymap="$default" first-keystroke="alt B"/>
             <keyboard-shortcut keymap="Emacs" first-keystroke="alt B" remove="true"/>
         </action>

@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-25
+
+### Changed
+
+- Blackboard now works in all IntelliJ-based IDEs (IntelliJ IDEA, PyCharm, WebStorm, CLion, GoLand and others), not only Rider.
+
 ## [0.1.1] - 2026-11-25
 
 ### Added

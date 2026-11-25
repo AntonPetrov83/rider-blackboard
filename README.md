@@ -1,6 +1,7 @@
 # Blackboard
 
-A lightweight, project-specific Markdown scratchpad for JetBrains Rider.
+A lightweight, project-specific Markdown scratchpad for JetBrains IDEs
+(IntelliJ IDEA, PyCharm, WebStorm, Rider, CLion, GoLand, PhpStorm, RubyMine and others, 2026.2+).
 See [specs/writing-block.md](specs/writing-block.md) for the full specification.
 
 ## Usage
@@ -16,26 +17,30 @@ See [specs/writing-block.md](specs/writing-block.md) for the full specification.
 
 ### Keyboard shortcut
 
-The default shortcut `Alt+B` is registered for the `$default` keymap and therefore inherited by the keymaps
-Rider ships with. It was checked against the Rider 2026.2 (build 262) keymaps:
+The default shortcut `Alt+B` is registered for the `$default` keymap and therefore inherited by the other keymaps.
+It was checked against the IntelliJ Platform 2026.2 (build 262) keymaps, including the keymap plugins JetBrains
+publishes separately:
 
 | Keymap | `Alt+B` before the plugin | Blackboard shortcut |
 |---|---|---|
-| Default (`$default`), Visual Studio, Visual Studio 2022, ReSharper, Visual Assist, VSCode, Sublime Text | free | `Alt+B` |
+| Default (`$default`), Default for XWin / GNOME / KDE, macOS, macOS System Shortcuts, Visual Studio (+ 2022, OSX, for Mac), ReSharper (+ OSX), Visual Assist (+ OSX), VSCode (+ OSX), Sublime Text (+ Mac OS X), Eclipse (+ Mac OS X), NetBeans 6.5, QtCreator (+ Mac OS X), Xcode | free | `Alt+B` (`⌥B` on macOS) |
 | Emacs | *Backward word* | none — Emacs keeps its binding |
 
 Notes:
 
-- On Windows/Linux the main menu item **Build** has the mnemonic `Alt+B`. IDE keymap shortcuts take precedence
+- In IDEs with a **Build** main menu (IntelliJ IDEA, Rider, ...) on Windows/Linux, the menu has the mnemonic `Alt+B`. IDE keymap shortcuts take precedence
   over main-menu mnemonics, so with Blackboard installed `Alt+B` toggles Blackboard; the Build menu remains
   reachable by pressing and releasing `Alt`, then `B`, and through its own shortcuts.
+- On macOS, `⌥B` normally types a character (`∫` on the U.S. layout); with Blackboard installed it toggles
+  Blackboard in the IDE instead. Remove the shortcut in the keymap if you need that character.
 - To change or remove the shortcut: **Settings → Keymap**, search for *Toggle Blackboard*.
 
 ## Stack
 
 | Component | Version |
 |---|---|
-| Target IDE | JetBrains Rider 2026.2.3.1 (build 262.10968.170), `sinceBuild = 262` |
+| Supported IDEs | All IntelliJ-based IDEs, `sinceBuild = 262` (2026.2+); only `com.intellij.modules.platform` is required |
+| Development SDK | JetBrains Rider 2026.2.3.1 (build 262.10968.170) |
 | Language | Kotlin 2.4.21 |
 | JDK toolchain | 25 (auto-provisioned via Foojay; the 262 platform is compiled for Java 25) |
 | Build | Gradle 9.9.0 (wrapper), IntelliJ Platform Gradle Plugin 2.20.1 |
@@ -61,7 +66,7 @@ platformLocalPath=C:/Users/<you>/AppData/Local/Programs/Rider
 ./gradlew verifyPlugin    # run the JetBrains Plugin Verifier
 ```
 
-### Install the ZIP into Rider
+### Install the ZIP into the IDE
 
 **Settings → Plugins → ⚙ → Install Plugin from Disk…** → select `build/distributions/blackboard-<version>.zip`.
 
